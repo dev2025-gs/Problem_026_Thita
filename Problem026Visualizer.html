@@ -1,0 +1,244 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Same Binary Tree – Visualizer</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background: #f5f7fa;
+        padding: 20px;
+      }
+      h1 {
+        margin-bottom: 5px;
+      }
+      input, textarea {
+        width: 400px;
+        padding: 8px;
+        font-size: 16px;
+      }
+      button {
+        padding: 8px 14px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-left: 8px;
+      }
+      #treeWrapper {
+        display: flex;
+        gap: 60px;
+        margin-top: 30px;
+      }
+      .tree {
+        background: #fff;
+        border: 1px solid #ccc;
+        border-radius: 8px;
+        padding: 20px 10px 10px 10px;
+        min-width: 340px;
+        min-height: 320px;
+        position: relative;
+        height: 380px;
+        overflow: visible;
+      }
+      .node {
+        display: inline-block;
+        min-width: 38px;
+        min-height: 38px;
+        width: 38px;
+        height: 38px;
+        background: steelblue;
+        color: #fff;
+        border-radius: 50%;
+        text-align: center;
+        line-height: 38px;
+        font-size: 18px;
+        margin: 4px;
+        position: absolute;
+        z-index: 2;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      }
+      .node.current {
+        background: orange;
+        border: 2px solid #333;
+      }
+      .node.different {
+        background: crimson;
+      }
+      .edge {
+        position: absolute;
+        background: #888;
+        z-index: 1;
+        width: 2px;
+        border-radius: 1px;
+        transform-origin: top left;
+      }
+      #info {
+        margin-top: 20px;
+        font-size: 18px;
+      }
+      .label {
+        font-size: 14px;
+        margin-bottom: 8px;
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Same Binary Tree – Animation</h1>
+    <p>Enter two trees (level order, use null for empty):</p>
+    <span class="label">Tree 1:</span>
+    <input id="input1" value="1,2,3" />
+    <br />
+    <span class="label">Tree 2:</span>
+    <input id="input2" value="1,2,3" />
+    <button onclick="start()">Start Animation</button>
+    <button onclick="step()">Next Step</button>
+    <div id="treeWrapper">
+      <div class="tree" id="tree1"></div>
+      <div class="tree" id="tree2"></div>
+    </div>
+    <div id="info"></div>
+    <script>
+      // Tree node structure
+      function TreeNode(val) {
+        this.val = val;
+        this.left = null;
+        this.right = null;
+      }
+      // Parse level order input into a binary tree
+      function buildTree(arr) {
+        if (!arr.length || arr[0] == null) return null;
+        let root = new TreeNode(arr[0]);
+        let queue = [root];
+        let i = 1;
+        while (queue.length && i < arr.length) {
+          let node = queue.shift();
+          if (i < arr.length && arr[i] != null) {
+            node.left = new TreeNode(arr[i]);
+            queue.push(node.left);
+          }
+          i++;
+          if (i < arr.length && arr[i] != null) {
+            node.right = new TreeNode(arr[i]);
+            queue.push(node.right);
+          }
+          i++;
+        }
+        return root;
+      }
+      // Animation state
+      let steps = [];
+      let stepIndex = 0;
+      let tree1, tree2;
+      function start() {
+        // Parse inputs
+        const arr1 = document.getElementById("input1").value.split(",").map(x => x.trim() === "null" ? null : (x.trim() === "" ? null : parseInt(x.trim())));
+        const arr2 = document.getElementById("input2").value.split(",").map(x => x.trim() === "null" ? null : (x.trim() === "" ? null : parseInt(x.trim())));
+        tree1 = buildTree(arr1);
+        tree2 = buildTree(arr2);
+        steps = [];
+        stepIndex = 0;
+        // Generate steps for the animation
+        generateSteps(tree1, tree2);
+        drawTrees();
+        showInfo();
+      }
+      // Generate step-by-step traversal for isSameTree
+      function generateSteps(n1, n2, path = []) {
+        steps.push({ n1, n2, path: [...path] });
+        if (!n1 && !n2) return;
+        if (!n1 || !n2) return;
+        if (n1.val !== n2.val) return;
+        generateSteps(n1.left, n2.left, [...path, "L"]);
+        generateSteps(n1.right, n2.right, [...path, "R"]);
+      }
+      function step() {
+        if (stepIndex < steps.length - 1) {
+          stepIndex++;
+          drawTrees();
+          showInfo();
+        } else {
+          showInfo(true);
+        }
+      }
+      // Draw both trees, highlighting current nodes
+      function drawTrees() {
+        drawTree(tree1, "tree1", steps[stepIndex]?.n1);
+        drawTree(tree2, "tree2", steps[stepIndex]?.n2);
+      }
+      // Recursively draw a tree
+      function drawTree(root, containerId, currentNode) {
+        const container = document.getElementById(containerId);
+        container.innerHTML = "";
+        // Improved layout: wider horizontal spacing and more vertical spacing
+        function render(node, depth, pos, parentPos) {
+          if (!node) return;
+          const nodeDiv = document.createElement("div");
+          nodeDiv.className = "node";
+          if (node === currentNode) nodeDiv.classList.add("current");
+          if (steps[stepIndex] && ((steps[stepIndex].n1 === node && steps[stepIndex].n2 && node.val !== steps[stepIndex].n2.val) || (steps[stepIndex].n2 === node && steps[stepIndex].n1 && node.val !== steps[stepIndex].n1.val))) {
+            nodeDiv.classList.add("different");
+          }
+          nodeDiv.textContent = node.val;
+          nodeDiv.style.left = pos.x + "px";
+          nodeDiv.style.top = pos.y + "px";
+          container.appendChild(nodeDiv);
+          // Draw edges
+          if (parentPos) {
+            const dx = pos.x - parentPos.x;
+            const dy = pos.y - parentPos.y;
+            const length = Math.sqrt(dx*dx + dy*dy);
+            const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+            const edge = document.createElement("div");
+            edge.className = "edge";
+            edge.style.left = (parentPos.x + 19) + "px";
+            edge.style.top = (parentPos.y + 38) + "px";
+            edge.style.height = length - 24 + "px";
+            edge.style.transform = `rotate(${angle}deg)`;
+            container.appendChild(edge);
+          }
+          // Recursively render left and right children with more spacing
+          const hSpacing = 120 / (depth + 1);
+          const vSpacing = 70;
+          if (node.left) render(node.left, depth + 1, { x: pos.x - hSpacing, y: pos.y + vSpacing }, pos);
+          if (node.right) render(node.right, depth + 1, { x: pos.x + hSpacing, y: pos.y + vSpacing }, pos);
+        }
+        // Start rendering from root, centered
+        render(root, 0, { x: 150, y: 10 }, null);
+      }
+      // Show info about current step
+      function showInfo(done) {
+        const info = document.getElementById("info");
+        if (!steps.length) {
+          info.innerHTML = "";
+          return;
+        }
+        const { n1, n2, path } = steps[stepIndex];
+        let msg = `<b>Step ${stepIndex + 1} / ${steps.length}</b><br>`;
+        msg += `Path: Root${path.map(d => d === "L" ? " → Left" : " → Right").join("") || ""}<br>`;
+        if (!n1 && !n2) {
+          msg += "Both nodes are null. Continue.";
+        } else if (!n1 || !n2) {
+          msg += "One node is null, the other is not. Trees are <b>not the same</b>.";
+        } else if (n1.val !== n2.val) {
+          msg += `Node values differ (${n1.val} vs ${n2.val}). Trees are <b>not the same</b>.`;
+        } else {
+          msg += `Node values are equal (${n1.val}). Continue to children.`;
+        }
+        if (done || stepIndex === steps.length - 1) {
+          // Final result
+          let same = true;
+          for (let s of steps) {
+            if ((s.n1 && !s.n2) || (!s.n1 && s.n2) || (s.n1 && s.n2 && s.n1.val !== s.n2.val)) {
+              same = false;
+              break;
+            }
+          }
+          msg += `<br><br><strong>✅ Trees are ${same ? "the same" : "not the same"}.</strong>`;
+        }
+        info.innerHTML = msg;
+      }
+      // Initialize with default trees
+      window.onload = start;
+    </script>
+  </body>
+</html>
